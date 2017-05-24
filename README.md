@@ -1,2 +1,6 @@
-# committer-sql
-Implementation of Norconex Committer for SQL databases (using JDBC).
+SQL Committer
+=======================
+
+SQL/JDBC databasee implementation of Norconex Committer.
+
+Website: http://www.norconex.com/collectors/committer-sql/
