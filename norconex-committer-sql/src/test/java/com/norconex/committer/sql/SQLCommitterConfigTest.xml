@@ -27,6 +27,7 @@
   <toUppercase>true</toUppercase>
   <createMissing>true</createMissing>
   <createTableSQL>CREATE TABLE blah</createTableSQL>
+  <multiValuesJoiner>^^</multiValuesJoiner>
   <username>joe</username>
   <password>password</password>
   <passwordKey>/some/file</passwordKey>

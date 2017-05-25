@@ -46,6 +46,7 @@ public class SQLCommitterConfigTest {
         committer.setCreateMissing(true);
         committer.setToUppercase(true);
         committer.setCreateTableSQL("createTableSQL");
+        committer.setMultiValuesJoiner("^");
         
         committer.setQueueDir("my-queue-dir");
         committer.setSourceContentField("sourceContentField");

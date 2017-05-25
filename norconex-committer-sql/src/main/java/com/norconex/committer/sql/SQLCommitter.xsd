@@ -29,6 +29,7 @@
             <xs:element name="driverPath" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
             <xs:element ref="properties" minOccurs="0" maxOccurs="1" />
             <xs:element name="createTableSQL" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
+            <xs:element name="multiValuesJoiner" type="xs:string" minOccurs="0" maxOccurs="1" />
             <xs:element name="username" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
             <xs:element name="password" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
             <xs:element name="passwordKey" type="nonEmptyString" minOccurs="0" maxOccurs="1" />

@@ -145,6 +145,10 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  *        (Optional SQL for creating missing table if not found. 
  *         Default uses a predefined SQL.)
  *      &lt;/createTableSQL&gt;
+ *      &lt;multiValuesJoiner&gt;
+ *        (One or more characters to join multi-value fields.
+ *         Default is "|".)
+ *      &lt;/multiValuesJoiner&gt;
  *  
  *      &lt;!-- Use the following if authentication is required. --&gt;
  *      &lt;username&gt;(Optional user name)&lt;/username&gt;
@@ -193,10 +197,16 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  * 
  * <h4>Usage example:</h4>
  * <p>
- * The following example uses the minimum required settings:.  
+ * The following example uses an H2 database and creates fields as
+ * they are encountered. 
  * </p> 
  * <pre>
  *  &lt;committer class="com.norconex.committer.sql.SQLCommitter"&gt;
+ *      &lt;driverPath&gt;/path/to/driver/h2.jar&lt;/driverPath&gt;
+ *      &lt;driverClass&gt;org.h2.Driver&lt;/driverClass&gt;
+ *      &lt;connectionUrl&gt;jdbc:h2:file:///path/to/db/h2&lt;/connectionUrl&gt;
+ *      &lt;tableName&gt;test_table&lt;/tableName&gt;
+ *      &lt;createMissing&gt;true&lt;/createMissing&gt;
  *  &lt;/committer&gt;
  * </pre>
  *  
@@ -214,8 +224,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
     public static final String DEFAULT_MULTI_VALUES_JOINER = "|";
 
     private static final String[] NO_REFLECT_FIELDS = new String[] {
-            "existingFields", "tableVerified", "tableExists", 
-            "multiValuesJoiner", "datasource"
+            "existingFields", "tableVerified", "tableExists", "datasource"
     }; 
     
     private String driverPath;
@@ -664,5 +673,5 @@ public class SQLCommitter extends AbstractMappedCommitter {
         return new ReflectionToStringBuilder(this, 
                 ToStringStyle.SHORT_PREFIX_STYLE).setExcludeFieldNames(
                         NO_REFLECT_FIELDS).toString();
-    }    
+    }
 }
