@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- 
-   Copyright 2017 Norconex Inc.
+   Copyright 2017-2018 Norconex Inc.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@
             <xs:element name="driverPath" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
             <xs:element ref="properties" minOccurs="0" maxOccurs="1" />
             <xs:element name="createTableSQL" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
+            <xs:element name="createFieldSQL" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
             <xs:element name="multiValuesJoiner" type="xs:string" minOccurs="0" maxOccurs="1" />
             <xs:element name="username" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
             <xs:element name="password" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
@@ -43,8 +44,8 @@
                 </xs:restriction>
               </xs:simpleType>
             </xs:element>
-            <xs:element name="toUppercase" type="xs:boolean" minOccurs="0" maxOccurs="1" />
-            <xs:element name="createMissing" type="xs:boolean" minOccurs="0" maxOccurs="1" />
+            <xs:element name="fixFieldNames" type="xs:boolean" minOccurs="0" maxOccurs="1" />
+            <xs:element name="fixFieldValues" type="xs:boolean" minOccurs="0" maxOccurs="1" />
           </xs:all>
         </xs:extension> 
       </xs:complexContent>

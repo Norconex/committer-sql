@@ -1,4 +1,4 @@
-/* Copyright 2017 Norconex Inc.
+/* Copyright 2017-2018 Norconex Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,18 +15,21 @@
 package com.norconex.committer.sql;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
@@ -42,6 +45,7 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
+import org.apache.commons.text.StrSubstitutor;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
@@ -64,18 +68,48 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  * <h3>Handling of missing table/fields</h3>
  * <p>
  * By default, this Committer will throw an exception when trying to insert
- * values into non-existing database fields or table.
- * Make sure your database table exists and the document fields 
- * being sent to the committer match your database fields.  Alternatively,
- * you can tell the committer to attempt creating a missing table or missing
- * fields with {@link #setCreateMissing(boolean)}.  The document content
- * will be created as a <code>CLOB</code> database data type.  All other
- * fields created will be <code>VARCHAR(32672)</code>.  
- * If you want to have the table automatically created but define the fields
- * yourself, you can provide your own <code>CREATE</code> SQL with
- * {@link #setCreateTableSQL(String)}.  When using this options, make sure
- * your SQL create a table of the same name as {@link #setTableName(String)}.
+ * values into non-existing database table or fields. It is recommended your 
+ * make sure your database table exists and the document fields being sent 
+ * to the committer match your database fields.
  * </p>
+ * <p>
+ * Alternatively, you can provide the necessary SQLs to create a new
+ * table as well as new fields as needed using 
+ * {@link #setCreateTableSQL(String)} and {@link #setCreateFieldSQL(String)}
+ * respectively. Make sure to use the following placeholder variables 
+ * as needed in the provided SQL(s) to have them automatically replaced by 
+ * this Committer.
+ * </p>
+ * 
+ * <dl>
+ *   
+ *   <dt>${tableName}</dt>
+ *   <dd>
+ *     Your table name, to be replaced with the value supplied with
+ *     {@link #setTableName(String)}. 
+ *   </dd>
+ *   
+ *   <dt>${targetReferenceField}</dt>
+ *   <dd>
+ *     The field that will hold your document reference. This usually is
+ *     your table primary key. Default is {@value #DEFAULT_SQL_ID_FIELD} and
+ *     can be overwritten with {@link #setTargetReferenceField(String)}.
+ *   </dd>
+ *   
+ *   <dt>${targetContentField}</dt>
+ *   <dd>
+ *     The field that will hold your document content (or "body"). 
+ *     Default is {@value #DEFAULT_SQL_CONTENT_FIELD} and can be
+ *     overwritten with {@link #setTargetContentField(String)}.
+ *   </dd>
+ *   
+ *   <dt>${fieldName}</dt>
+ *   <dd>
+ *     A field name to be created if you provided an SQL for creating new 
+ *     fields.
+ *   </dd>
+ *   
+ * </dl>
  * 
  * <h3>Authentication</h3>
  * <p>
@@ -134,46 +168,72 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  *          &lt;property key="(property name)"&gt;(Property value.)&lt;/property&gt;
  *          &lt;!-- You can have multiple property. --&gt;
  *      &lt;/properties&gt;
- *      &lt;toUppercase&gt;
- *        (Default will send all table and field names as lowercase.
- *         Set to <code>true</code> to send as uppercase.)
- *      &lt;/toUppercase&gt;
- *      &lt;createMissing&gt;
- *        (Create missing table if not found. Default is <code>false</code>.)
- *      &lt;/createMissing&gt;
+ *      
  *      &lt;createTableSQL&gt;
- *        (Optional SQL for creating missing table if not found. 
- *         Default uses a predefined SQL.)
+ *          &lt;!-- 
+ *            The CREATE statement used to create a table if it does not 
+ *            already exist. If you need fields of specific types,
+ *            specify them here.  The following variables are expected
+ *            and will be replaced with the configuration options of the same name:
+ *            ${tableName}, ${targetReferenceField} and ${targetContentField}.
+ *            Example:
+ *            --&gt;
+ *          CREATE TABLE ${tableName} (
+ *              ${targetReferenceField} VARCHAR(32672) NOT NULL, 
+ *              ${targetContentField}  CLOB, 
+ *              PRIMARY KEY ( ${targetReferenceField} ),
+ *              title VARCHAR(256)
+ *          )
  *      &lt;/createTableSQL&gt;
+ *      &lt;createFieldSQL&gt;
+ *          &lt;!-- 
+ *            The ALTER statement used to create missing table fields.  
+ *            The ${tableName} variable and will be replaced with 
+ *            the configuration option of the same name. The ${fieldName} 
+ *            variable will be replaced by newly encountered field names.
+ *            Example:
+ *            --&gt;
+ *          ALTER TABLE ${tableName} ADD ${fieldName} VARCHAR(32672)
+ *      &lt;/createFieldSQL&gt;
  *      &lt;multiValuesJoiner&gt;
- *        (One or more characters to join multi-value fields.
- *         Default is "|".)
+ *          (One or more characters to join multi-value fields.
+ *           Default is "|".)
  *      &lt;/multiValuesJoiner&gt;
- *  
+ *      &lt;fixFieldNames&gt;
+ *          (Attempts to prevent insertion errors by converting characters that
+ *           are not underscores or alphanumeric to underscores.
+ *           Will also remove all non alphabetic characters that begins
+ *           a field name.)
+ *      &lt;/fixFieldNames&gt;
+ *      &lt;fixFieldValues&gt;
+ *          (Attempts to prevent insertion errors by truncating values
+ *           that are larger than their defined maximum field length.)
+ *      &lt;/fixFieldValues&gt;
+ *            
  *      &lt;!-- Use the following if authentication is required. --&gt;
  *      &lt;username&gt;(Optional user name)&lt;/username&gt;
  *      &lt;password&gt;(Optional user password)&lt;/password&gt;
  *      &lt;!-- Use the following if password is encrypted. --&gt;
  *      &lt;passwordKey&gt;(the encryption key or a reference to it)&lt;/passwordKey&gt;
  *      &lt;passwordKeySource&gt;[key|file|environment|property]&lt;/passwordKeySource&gt;
- *  
+ *      
  *      &lt;sourceReferenceField keep="[false|true]"&gt;
  *         (Optional name of field that contains the document reference, when 
- *         the default document reference is not used.  
- *         Once re-mapped, this metadata source field is 
- *         deleted, unless "keep" is set to <code>true</code>.)
+ *          the default document reference is not used.  
+ *          Once re-mapped, this metadata source field is 
+ *          deleted, unless "keep" is set to <code>true</code>.)
  *      &lt;/sourceReferenceField&gt;
  *      &lt;targetReferenceField&gt;
  *         (Name of the database target field where the store a document unique 
- *         identifier (sourceReferenceField).  If not specified, 
- *         default is "id". Typically is a tableName primary key.) 
+ *          identifier (sourceReferenceField).  If not specified, 
+ *          default is "id". Typically is a tableName primary key.) 
  *      &lt;/targetReferenceField&gt;
  *      &lt;sourceContentField keep="[false|true]"&gt;
  *         (If you wish to use a metadata field to act as the document 
- *         "content", you can specify that field here.  Default 
- *         does not take a metadata field but rather the document content.
- *         Once re-mapped, the metadata source field is deleted,
- *         unless "keep" is set to <code>true</code>.)
+ *          "content", you can specify that field here.  Default 
+ *          does not take a metadata field but rather the document content.
+ *          Once re-mapped, the metadata source field is deleted,
+ *          unless "keep" is set to <code>true</code>.)
  *      &lt;/sourceContentField&gt;
  *      &lt;targetContentField&gt;
  *         (Target repository field name for a document content/body.
@@ -181,7 +241,7 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  *          quite large, a CLOB field is usually best advised.)
  *      &lt;/targetContentField&gt;
  *      &lt;commitBatchSize&gt;
- *          (Max number of documents to send to the database at once.)
+ *         (Max number of documents to send to the database at once.)
  *      &lt;/commitBatchSize&gt;
  *      &lt;queueDir&gt;(optional path where to queue files)&lt;/queueDir&gt;
  *      &lt;queueSize&gt;(max queue size before committing)&lt;/queueSize&gt;
@@ -197,8 +257,9 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  * 
  * <h4>Usage example:</h4>
  * <p>
- * The following example uses an H2 database and creates fields as
- * they are encountered. 
+ * The following example uses an H2 database and creates the table and fields 
+ * as they are encountered, storing all new fields as VARCHAR, making sure
+ * those new fields are no longer than 5000 characters. 
  * </p> 
  * <pre>
  *  &lt;committer class="com.norconex.committer.sql.SQLCommitter"&gt;
@@ -206,7 +267,17 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  *      &lt;driverClass&gt;org.h2.Driver&lt;/driverClass&gt;
  *      &lt;connectionUrl&gt;jdbc:h2:file:///path/to/db/h2&lt;/connectionUrl&gt;
  *      &lt;tableName&gt;test_table&lt;/tableName&gt;
- *      &lt;createMissing&gt;true&lt;/createMissing&gt;
+ *      &lt;createTableSQL&gt;
+ *          CREATE TABLE ${tableName} (
+ *              ${targetReferenceField} VARCHAR(32672) NOT NULL, 
+ *              ${targetContentField}  CLOB, 
+ *              PRIMARY KEY ( ${targetReferenceField} )
+ *          )
+ *      &lt;/createTableSQL&gt;
+ *      &lt;createFieldSQL&gt;
+ *          ALTER TABLE ${tableName} ADD ${fieldName} VARCHAR(5000)
+ *      &lt;/createFieldSQL&gt;
+ *      &lt;fixFieldValues&gt;true&lt;/fixFieldValues&gt;
  *  &lt;/committer&gt;
  * </pre>
  *  
@@ -224,7 +295,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
     public static final String DEFAULT_MULTI_VALUES_JOINER = "|";
 
     private static final String[] NO_REFLECT_FIELDS = new String[] {
-            "existingFields", "tableVerified", "tableExists", "datasource"
+            "existingFields", "tableVerified", "datasource"
     }; 
     
     private String driverPath;
@@ -234,17 +305,20 @@ public class SQLCommitter extends AbstractMappedCommitter {
     private String password;
     private EncryptionKey passwordKey;
     private final Properties properties = new Properties();
+
     private String tableName;
-    private boolean createMissing;
-    private boolean toUppercase;
     private String createTableSQL;
+    private String createFieldSQL;
+    
+    private boolean fixFieldNames;
+    private boolean fixFieldValues;
+    private String multiValuesJoiner = DEFAULT_MULTI_VALUES_JOINER;
     
     // When we create missing ones... so we do not check if exists each time.
-    private final List<String> existingFields = new ArrayList<>();
+    // key = field name; value = field size
+    private final Map<String, Integer> existingFields = new HashMap<>();
     // If we could confirm whether the tableName exists
     private boolean tableVerified;
-    private boolean tableExists;
-    private String multiValuesJoiner;
     private BasicDataSource datasource;
     
     
@@ -310,25 +384,18 @@ public class SQLCommitter extends AbstractMappedCommitter {
         this.tableName = tableName;
     }
 
-    public boolean isCreateMissing() {
-        return createMissing;
-    }
-    public void setCreateMissing(boolean createMissing) {
-        this.createMissing = createMissing;
-    }
-
-    public boolean isToUppercase() {
-        return toUppercase;
-    }
-    public void setToUppercase(boolean toUppercase) {
-        this.toUppercase = toUppercase;
-    }
-
     public String getCreateTableSQL() {
         return createTableSQL;
     }
     public void setCreateTableSQL(String createTableSQL) {
         this.createTableSQL = createTableSQL;
+    }
+    
+    public String getCreateFieldSQL() {
+        return createFieldSQL;
+    }
+    public void setCreateFieldSQL(String createFieldSQL) {
+        this.createFieldSQL = createFieldSQL;
     }
 
     public String getMultiValuesJoiner() {
@@ -336,6 +403,20 @@ public class SQLCommitter extends AbstractMappedCommitter {
     }
     public void setMultiValuesJoiner(String multiValuesJoiner) {
         this.multiValuesJoiner = multiValuesJoiner;
+    }
+
+    public boolean isFixFieldNames() {
+        return fixFieldNames;
+    }
+    public void setFixFieldNames(boolean fixFieldNames) {
+        this.fixFieldNames = fixFieldNames;
+    }
+
+    public boolean isFixFieldValues() {
+        return fixFieldValues;
+    }
+    public void setFixFieldValues(boolean fixFieldValues) {
+        this.fixFieldValues = fixFieldValues;
     }
 
     @Override
@@ -378,6 +459,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
                 + " commit operations to SQL database.");
         try {
             QueryRunner q = new QueryRunner(nullSafeDataSource());
+            ensureTable(q);
             for (ICommitOperation op : batch) {
                 if (op instanceof IAddOperation) {
                     addOperation((IAddOperation) op, q);
@@ -400,7 +482,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
     }
 
     private void addOperation(IAddOperation add, QueryRunner q)
-            throws IOException, SQLException {
+            throws SQLException {
         String docId = add.getMetadata().getString(getTargetReferenceField());
         if (StringUtils.isBlank(docId)) {
             docId = add.getReference();
@@ -412,137 +494,187 @@ public class SQLCommitter extends AbstractMappedCommitter {
             String field = entry.getKey();
             String value = StringUtils.join(
                     entry.getValue(), getMultiValuesJoiner());
-            fields.add(adjustCase(field));
+            fields.add(fixFieldName(field));
             values.add(value);
         }
 
-        String sql = "INSERT INTO " + adjustCase(tableName) + "("
+        String sql = "INSERT INTO " + tableName + "("
                 + StringUtils.join(fields, ",")
                 + ") VALUES (" + StringUtils.repeat("?", ", ", values.size())
                 + ")";
         if (LOG.isTraceEnabled()) {
             LOG.trace("SQL: " + sql);
         }
-        sqlInsertDoc(q, sql, docId, fields, values.toArray());
+        sqlInsertDoc(q, sql, docId, fields, values);
     }
 
     private void deleteOperation(IDeleteOperation del, QueryRunner q)
-            throws IOException, SQLException {
-        String deleteSQL = "DELETE FROM " + adjustCase(tableName)
-                + " WHERE " + adjustCase(getTargetReferenceField())
-                + " = ?";
-        LOG.trace(deleteSQL);
-        q.update(deleteSQL, del.getReference());
+            throws SQLException {
+        runDelete(q, del.getReference());
+    }
+
+    private void sqlInsertDoc(QueryRunner q, String sql, String docId, 
+            List<String> fields, List<String> values) throws SQLException {
+        ensureFields(q, fields);
+        Object[] args = new Object[values.size()];
+        int i = 0;
+        for (String value : values) {
+            args[i] = fixFieldValue(fields.get(i), value);
+            i++;
+        }
+
+        // If it already exists, delete it first.
+        if (recordExists(q, docId)) {
+            LOG.debug("Record exists. Deleting it first (" + docId + ").");
+            runDelete(q, docId);
+        }
+        q.update(sql, args);
+    }
+
+    private String fixFieldName(String fieldName) {
+        if (!fixFieldNames) {
+            return fieldName;
+        }
+        String newName = fieldName.replaceAll("\\W+", "_");
+        newName = newName.replaceFirst("^[\\d_]+", "");
+        if (LOG.isDebugEnabled() && !newName.equals(fieldName)) {
+            LOG.debug("Field name modified: " + fieldName + " -> " + newName);
+        }
+        return newName;
     }
     
-    private void sqlInsertDoc(QueryRunner q, String sql, String docId, 
-            List<String> fields, Object[] values) throws SQLException {
+    private String fixFieldValue(String fieldName, String value) {
+        if (!fixFieldValues) {
+            return value;
+        }
+        Integer size = existingFields.get(
+                StringUtils.lowerCase(fieldName, Locale.ENGLISH));
+        if (size == null) {
+            return value;
+        }
+        String newValue = StringUtils.truncate(value, size);
+        if (LOG.isDebugEnabled() && !newValue.equals(value)) {
+            LOG.debug("Value truncated: " + value + " -> " + newValue);
+        }
+        return newValue;
+    }
+    
+    //--- Verifying/creating tables/fields -------------------------------------
+
+    private boolean tableExists(QueryRunner q) {
         try {
-            // If it already exists, delete it first.
-            String selectSQL = "SELECT 1 FROM " + adjustCase(tableName) + " WHERE "
-                    + adjustCase(getTargetReferenceField()) + " = ?";
-            LOG.trace(selectSQL);
-            if (q.query(selectSQL, 
-                    new ScalarHandler<Object>(), docId) != null) {
-                LOG.debug("Record exists. Deleting it first (" + docId + ").");
-                String deleteSQL = "DELETE FROM " + adjustCase(tableName)
-                        + " WHERE " + adjustCase(getTargetReferenceField())
-                        + " = ?";
-                LOG.trace(deleteSQL);
-                q.update(deleteSQL, docId);
-            }
-            q.update(sql, values);
+            // for table existence, we cannot rely enough on return value
+            runExists(q, null);
+            return true;
         } catch (SQLException e) {
-            if ((!tableVerified && tableCreatedIfMissing(q))
-                    || fieldsCreatedIfMissing(q, fields)) {
-                // missing tableName or fields created, try again 
-                sqlInsertDoc(q, sql, docId, fields, values);
-            } else {
-                throw e;
+            return false;
+        }
+    }
+    private boolean recordExists(QueryRunner q, String docId)
+            throws SQLException {
+        return runExists(q, getTargetReferenceField() + " = ?", docId);
+    }
+    private boolean runExists(QueryRunner q, String where, Object... values)
+            throws SQLException {
+        String sql = "SELECT 1 FROM " + tableName;
+        if (StringUtils.isNotBlank(where)) {
+            sql += " WHERE " + where;
+        }
+        LOG.debug(sql);
+        Integer val = (Integer) q.query(sql, new ScalarHandler<>(), values);
+        return val != null && val == 1;
+    }
+    private void runDelete(QueryRunner q, String docId) throws SQLException {
+        String deleteSQL = "DELETE FROM " + tableName
+                + " WHERE " + getTargetReferenceField() + " = ?";
+        LOG.trace(deleteSQL);
+        q.update(deleteSQL, docId);
+    }
+    
+    private synchronized void ensureTable(QueryRunner q) throws SQLException {
+        // if table was verified or no CREATE statement specified,
+        // return right away.
+        if (tableVerified || StringUtils.isBlank(createTableSQL)) {
+            return;
+        }
+        LOG.info("Checking if table \"" + tableName + "\" exists...");
+        if (!tableExists(q)) {
+            LOG.info("Table \"" + tableName + "\" does not exist. "
+                    + "Attempting to create it...");
+            String sql = interpolate(getCreateTableSQL(), null);
+            LOG.debug(sql);
+            q.update(sql);
+            LOG.info("Table created.");
+        } else {
+            LOG.info("Table \"" + tableName + "\" exists.");
+        }
+        
+        loadFieldsMetadata(q);
+        
+        tableVerified = true;
+    }
+
+    private synchronized void ensureFields(QueryRunner q, List<String> fields)
+            throws SQLException {
+        // If not SQL to create field,  we assume they should all exist.
+        if (StringUtils.isBlank(getCreateFieldSQL())) {
+            return;
+        }
+
+        Set<String> currentFields = existingFields.keySet();
+        boolean hasNew = false;
+        for (String field : fields) {
+            if (!currentFields.contains(
+                    StringUtils.lowerCase(field, Locale.ENGLISH))) {
+                // Create field
+                createField(q, field);
+                hasNew = true;
             }
+        }
+        
+        // Update fields metadata
+        if (hasNew) {
+            loadFieldsMetadata(q);
+        }
+    }
+    
+    private void createField(QueryRunner q, String field) throws SQLException {
+        try {
+            String sql = interpolate(getCreateFieldSQL(), field);
+            LOG.trace(sql);
+            q.update(sql);
+            LOG.info("New field \"" + field + "\" created.");
+        } catch (SQLException e) {
+              LOG.info("New field \"" + field + "\" could not be created.");
+              throw e;
         }
     }
 
-    private synchronized boolean fieldsCreatedIfMissing(
-            QueryRunner q, List<String> fields) throws SQLException {
-        if (!tableExists || !createMissing) {
-            return false;
-        }
-        
-        final List<String> tableFields = new ArrayList<>();
-        q.query("SELECT * FROM " + adjustCase(tableName), 
-                new ResultSetHandler<Void>(){
+    private void loadFieldsMetadata(QueryRunner q) throws SQLException {
+        // Add existing field info
+        q.query("SELECT * FROM " + tableName, new ResultSetHandler<Void>(){
             @Override
             public Void handle(ResultSet rs) throws SQLException {
-                for (int i = 1; i <= rs.getMetaData().getColumnCount(); i++) {
-                    String tableField = rs.getMetaData().getColumnLabel(i);
-                    tableFields.add(adjustCase(tableField));
+                ResultSetMetaData metadata = rs.getMetaData();
+                for (int i = 1; i <= metadata.getColumnCount(); i++) {
+                    existingFields.put(StringUtils.lowerCase(
+                            metadata.getColumnLabel(i), Locale.ENGLISH),
+                            metadata.getColumnDisplaySize(i));
                 }
                 return null;
             }
         });
-        
-        boolean atLeastOneCreated = false;
-        for (String field : fields) {
-            if (existingFields.contains(field)) {
-                continue;
-            }
-            if (!tableFields.contains(field)) {
-                try {
-                    q.update("ALTER TABLE " + adjustCase(tableName) + " ADD "
-                            + field + " VARCHAR(32672)");
-                    atLeastOneCreated = true;
-                    LOG.info("Missing tableName field \"" + field + "\" created.");
-                } catch (SQLException e) {
-                    LOG.info("Missing tableName field \"" + field 
-                            + "\" could not be created.", e);
-                    throw e;
-                }
-            }
-            existingFields.add(adjustCase(field));
-        }
-        return atLeastOneCreated;
     }
     
-    private synchronized boolean tableCreatedIfMissing(QueryRunner q) {
-        if (tableVerified) {
-            // if it was verify and we are getting here again, it means
-            // it did not exist.
-            return false;
+    private String interpolate(String text, String fieldName) {
+        Map<String, String> vars = new HashMap<>();
+        vars.put("tableName", getTableName());
+        vars.put("targetReferenceField", getTargetReferenceField());
+        vars.put("targetContentField", getTargetContentField());
+        if (StringUtils.isNotBlank(fieldName)) {
+            vars.put("fieldName", fieldName);
         }
-        tableVerified = true;
-        try {
-            q.query("SELECT * FROM " + tableName, new ScalarHandler<>());
-            tableExists = true;
-            return false;
-        } catch (SQLException e) {
-            if (createMissing) {
-                LOG.info("Table \"" + tableName + "\" does not exist. "
-                        + "Attempting to create it.");
-                String pk = adjustCase(getTargetReferenceField());
-                try {
-                    String sql = getCreateTableSQL();
-                    if (StringUtils.isBlank(sql)) {
-                        sql = "CREATE TABLE " + tableName + " (" 
-                                + pk + " VARCHAR(32672) NOT NULL, "
-                                + getTargetContentField() + " CLOB, "
-                                + "PRIMARY KEY (" + pk + "))";
-                    }
-                    q.update(sql);
-                    tableExists = true;
-                    LOG.trace(sql);
-                    LOG.info("Table created.");
-                    return true;
-                } catch (SQLException e1) {
-                    LOG.error("Could not create missing table \""
-                            + tableName + "\".", e1);
-                    return false;
-                }
-            }
-            LOG.error("Table \"" + tableName + "\" does not exist. "
-                    + "Consider setting \"createMissing\" to \"true\".", e);
-            return false;
-        }
+        return StrSubstitutor.replace(text, vars);
     }
     
     private synchronized BasicDataSource nullSafeDataSource() {
@@ -582,13 +714,6 @@ public class SQLCommitter extends AbstractMappedCommitter {
         return datasource;
     }    
 
-    private String adjustCase(String s) {
-        if (toUppercase) {
-            return StringUtils.upperCase(s, Locale.ENGLISH);
-        }
-        return StringUtils.lowerCase(s, Locale.ENGLISH);
-    }
-    
     @Override
     protected void saveToXML(XMLStreamWriter writer) throws XMLStreamException {
         EnhancedXMLStreamWriter w = new EnhancedXMLStreamWriter(writer);
@@ -610,8 +735,9 @@ public class SQLCommitter extends AbstractMappedCommitter {
         }
         w.writeElementString("tableName", getTableName());
         w.writeElementString("createTableSQL", getCreateTableSQL());
-        w.writeElementBoolean("createMissing", isCreateMissing());
-        w.writeElementBoolean("toUppercase", isToUppercase());
+        w.writeElementString("createFieldSQL", getCreateFieldSQL());
+        w.writeElementBoolean("fixFieldNames", isFixFieldNames());
+        w.writeElementBoolean("fixFieldValues", isFixFieldValues());
         w.writeElementString("multiValuesJoiner", getMultiValuesJoiner());
         
         // Encrypted password:
@@ -643,8 +769,9 @@ public class SQLCommitter extends AbstractMappedCommitter {
         }
         setTableName(xml.getString("tableName", getTableName()));
         setCreateTableSQL(xml.getString("createTableSQL", getCreateTableSQL()));
-        setCreateMissing(xml.getBoolean("createMissing", isCreateMissing()));
-        setToUppercase(xml.getBoolean("toUppercase", isToUppercase()));
+        setCreateFieldSQL(xml.getString("createFieldSQL", getCreateFieldSQL()));
+        setFixFieldNames(xml.getBoolean("fixFieldNames", isFixFieldNames()));
+        setFixFieldValues(xml.getBoolean("fixFieldValues", isFixFieldValues()));
         setMultiValuesJoiner(xml.getString(
                 "multiValuesJoiner", getMultiValuesJoiner()));
         

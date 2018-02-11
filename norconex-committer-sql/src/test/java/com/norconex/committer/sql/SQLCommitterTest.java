@@ -1,4 +1,4 @@
-/* Copyright 2017 Norconex Inc.
+/* Copyright 2017-2018 Norconex Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -35,7 +36,6 @@ import org.apache.commons.dbutils.handlers.MapHandler;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.input.NullInputStream;
-import org.apache.commons.lang3.CharEncoding;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -86,11 +86,6 @@ public class SQLCommitterTest {
         datasource.setDriverClassName(DRIVER_CLASS);
         datasource.setUrl(connectionURL);
         datasource.setDefaultAutoCommit(true);
-        getQueryRunner().update(
-                "CREATE TABLE " + TEST_TABLE + " (" 
-                + ID_FIELD + " VARCHAR(32672) NOT NULL, "
-                + CONTENT_FIELD + " CLOB, "
-                + "PRIMARY KEY (" + ID_FIELD + "))");
     }
     
     @Before
@@ -102,7 +97,25 @@ public class SQLCommitterTest {
         committer.setDriverClass(DRIVER_CLASS);
         committer.setConnectionUrl(connectionURL);
         committer.setTableName(TEST_TABLE);
-        getQueryRunner().update("DELETE FROM " + TEST_TABLE);
+        
+        // to force committing single operations:
+        committer.setQueueSize(1);
+
+        // defaults, tests can overwrite
+        committer.setCreateTableSQL(
+                "CREATE TABLE ${tableName} ("
+              + "  ${targetReferenceField} VARCHAR(32672) NOT NULL, "
+              + "  ${targetContentField}  CLOB, "
+              + "  PRIMARY KEY (${targetReferenceField}) "
+              + ")");
+        committer.setCreateFieldSQL(
+                "ALTER TABLE ${tableName} ADD ${fieldName} VARCHAR(30)");
+        
+        try {
+            getQueryRunner().update("DROP TABLE " + TEST_TABLE);
+        } catch (SQLException e) {
+            // OK if not found.
+        }
     }
     
     @After
@@ -131,11 +144,11 @@ public class SQLCommitterTest {
 
     @Test
     public void testCommitDelete() throws Exception {
-        // Add a document directly
-        getQueryRunner().update("INSERT INTO " + TEST_TABLE
-                + " (" + ID_FIELD + ", " + CONTENT_FIELD + ") VALUES (?, ?)",
-                TEST_ID, TEST_CONTENT);
-
+        // Add the document to be deleted
+        try (InputStream is = getContentStream()) {
+            committer.add(TEST_ID, is, new Properties());
+        }
+        
         assertTrue("Not properly added.", isFound(getDocument(TEST_ID)));
         
         // Queue it to be deleted
@@ -205,7 +218,6 @@ public class SQLCommitterTest {
         // assigned in source reference field. Set to keep that 
         // field.
         committer.setKeepSourceReferenceField(true);
-        committer.setCreateMissing(true);
         try (InputStream is = getContentStream()) {
             committer.add(TEST_ID, is, metadata);
             committer.commit();
@@ -255,7 +267,6 @@ public class SQLCommitterTest {
         // field.
         committer.setSourceContentField(sourceContentField);
         committer.setKeepSourceContentField(true);
-        committer.setCreateMissing(true);
         committer.add(TEST_ID, new NullInputStream(0), metadata);
         committer.commit();
         
@@ -277,7 +288,6 @@ public class SQLCommitterTest {
         
         // Add new doc to database
         committer.setTargetContentField(targetContentField);
-        committer.setCreateMissing(true);
         try (InputStream is = getContentStream()) {
             committer.add(TEST_ID, is, metadata);
             committer.commit();
@@ -302,7 +312,6 @@ public class SQLCommitterTest {
 		metadata.setString(fieldname, "1", "2", "3");
         
         committer.setMultiValuesJoiner("^");
-        committer.setCreateMissing(true);
         committer.add(TEST_ID, new NullInputStream(0), metadata);
         committer.commit();
         
@@ -315,6 +324,56 @@ public class SQLCommitterTest {
                 StringUtils.split(doc.getString(fieldname), "^").length);
 	}
 
+    @Test
+    public void testFixFieldValues() throws Exception {
+        Properties metadata = new Properties();
+        metadata.setString("longsingle", StringUtils.repeat("a", 50));
+        metadata.setString("longmulti", 
+                StringUtils.repeat("a", 10),
+                StringUtils.repeat("b", 10),
+                StringUtils.repeat("c", 10),
+                StringUtils.repeat("d", 10));
+        
+        committer.setFixFieldValues(true);
+        committer.setMultiValuesJoiner("-");
+        committer.add(TEST_ID, new NullInputStream(0), metadata);
+        committer.commit();
+        
+        // Check that it's in database
+        Properties doc = getDocument(TEST_ID); 
+        assertTrue("Not found.", isFound(doc));
+
+        
+        // Check values were truncated
+        assertEquals(doc.getString("longsingle"), StringUtils.repeat("a", 30));
+        assertEquals(doc.getString("longmulti"), 
+                StringUtils.repeat("a", 10) + "-"
+              + StringUtils.repeat("b", 10) + "-"
+              + StringUtils.repeat("c", 8));
+    }
+
+    @Test
+    public void testFixFieldNames() throws Exception {
+        Properties metadata = new Properties();
+        metadata.setString("A$b&c %e_f", "test1");
+        metadata.setString("99field2", "test2");
+        metadata.setString("*field3", "test3");
+        
+        committer.setFixFieldNames(true);
+        committer.add(TEST_ID, new NullInputStream(0), metadata);
+        committer.commit();
+        
+        // Check that it's in database
+        Properties doc = getDocument(TEST_ID); 
+        assertTrue("Not found.", isFound(doc));
+
+        
+        // Check values were truncated
+        assertEquals(doc.getString("a_b_c_e_f"), "test1");
+        assertEquals(doc.getString("field2"), "test2");
+        assertEquals(doc.getString("field3"), "test3");
+    }
+    
     private boolean hasTestContent(Properties doc) throws IOException {
         return TEST_CONTENT.equals(getContent(doc));
     }
@@ -336,7 +395,7 @@ public class SQLCommitterTest {
         return new QueryRunner(datasource);
     }
     private static InputStream getContentStream() throws IOException {
-        return IOUtils.toInputStream(TEST_CONTENT, CharEncoding.UTF_8);
+        return IOUtils.toInputStream(TEST_CONTENT, StandardCharsets.UTF_8);
     }
     
     public class ClobAwareRowProcessor extends BasicRowProcessor {

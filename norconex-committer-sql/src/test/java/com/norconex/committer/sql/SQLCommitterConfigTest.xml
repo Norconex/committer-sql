@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE xml>
 <!-- 
-   Copyright 2017 Norconex Inc.
+   Copyright 2017-2018 Norconex Inc.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -24,14 +24,15 @@
     <property key="key1">value 1</property>
     <property key="key2">value 2</property>
   </properties>
-  <toUppercase>true</toUppercase>
-  <createMissing>true</createMissing>
   <createTableSQL>CREATE TABLE blah</createTableSQL>
+  <createFieldSQL>CREATE FIELD blah</createFieldSQL>
   <multiValuesJoiner>^^</multiValuesJoiner>
   <username>joe</username>
   <password>password</password>
   <passwordKey>/some/file</passwordKey>
   <passwordKeySource>file</passwordKeySource>
+  <fixFieldNames>true</fixFieldNames>
+  <fixFieldValues>true</fixFieldValues>
 
   <sourceReferenceField keep="true">sourceReferenceField</sourceReferenceField>
   <targetReferenceField>targetReferenceField</targetReferenceField>

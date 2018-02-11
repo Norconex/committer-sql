@@ -1,4 +1,4 @@
-/* Copyright 2017 Norconex Inc.
+/* Copyright 2017-2018 Norconex Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,10 +43,11 @@ public class SQLCommitterConfigTest {
         committer.getProperties().setProperty("key1", "value1");
         committer.getProperties().setProperty("key2", "value2");
         committer.setTableName("tableName");
-        committer.setCreateMissing(true);
-        committer.setToUppercase(true);
         committer.setCreateTableSQL("createTableSQL");
+        committer.setCreateFieldSQL("createFieldSQL");
         committer.setMultiValuesJoiner("^");
+        committer.setFixFieldNames(true);
+        committer.setFixFieldValues(true);
         
         committer.setQueueDir("my-queue-dir");
         committer.setSourceContentField("sourceContentField");

@@ -7,6 +7,32 @@
   </properties>
   <body>
 
+    <release version="2.0.0-SNAPSHOT" date="2018-??-??" description="Feature release">
+      <action dev="essiembre" type="add">
+        Can now control dynamic database field creation for new document 
+        fields.  
+      </action>
+      <action dev="essiembre" type="add">
+        New "createFieldSQL", "fixFieldNames", and "fixFieldValues" 
+        configuration options.
+      </action>
+      <action dev="essiembre" type="update">
+        Table and fields are no longer created by default when they do not 
+        exists.
+      </action>
+      <action dev="essiembre" type="update">
+        Can now use specific variables in "createTableSQL" as well
+        as new "createFieldSQL" configuration options.
+      </action>
+      <action dev="essiembre" type="update">
+        Dependency updates: Norconex Commons Lang 1.14.0, 
+        Norconex Committer Core 2.1.2.
+      </action>
+      <action dev="essiembre" type="remove">
+        Removed "toUppercase" and "createMissing" configuration option.
+      </action>
+    </release>
+
     <release version="1.0.0" date="2017-05-25" description="Initial release">
       <action dev="essiembre" type="add">
         Initial release.
