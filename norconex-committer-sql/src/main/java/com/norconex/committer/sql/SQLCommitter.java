@@ -64,57 +64,57 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  * <p>
  * Commit documents to a SQL database.
  * </p>
- * 
+ *
  * <h3>Handling of missing table/fields</h3>
  * <p>
  * By default, this Committer will throw an exception when trying to insert
- * values into non-existing database table or fields. It is recommended your 
- * make sure your database table exists and the document fields being sent 
+ * values into non-existing database table or fields. It is recommended your
+ * make sure your database table exists and the document fields being sent
  * to the committer match your database fields.
  * </p>
  * <p>
  * Alternatively, you can provide the necessary SQLs to create a new
- * table as well as new fields as needed using 
+ * table as well as new fields as needed using
  * {@link #setCreateTableSQL(String)} and {@link #setCreateFieldSQL(String)}
- * respectively. Make sure to use the following placeholder variables 
- * as needed in the provided SQL(s) to have them automatically replaced by 
+ * respectively. Make sure to use the following placeholder variables
+ * as needed in the provided SQL(s) to have them automatically replaced by
  * this Committer.
  * </p>
- * 
+ *
  * <dl>
- *   
+ *
  *   <dt>${tableName}</dt>
  *   <dd>
  *     Your table name, to be replaced with the value supplied with
- *     {@link #setTableName(String)}. 
+ *     {@link #setTableName(String)}.
  *   </dd>
- *   
+ *
  *   <dt>${targetReferenceField}</dt>
  *   <dd>
  *     The field that will hold your document reference. This usually is
  *     your table primary key. Default is {@value #DEFAULT_SQL_ID_FIELD} and
  *     can be overwritten with {@link #setTargetReferenceField(String)}.
  *   </dd>
- *   
+ *
  *   <dt>${targetContentField}</dt>
  *   <dd>
- *     The field that will hold your document content (or "body"). 
+ *     The field that will hold your document content (or "body").
  *     Default is {@value #DEFAULT_SQL_CONTENT_FIELD} and can be
  *     overwritten with {@link #setTargetContentField(String)}.
  *   </dd>
- *   
+ *
  *   <dt>${fieldName}</dt>
  *   <dd>
- *     A field name to be created if you provided an SQL for creating new 
+ *     A field name to be created if you provided an SQL for creating new
  *     fields.
  *   </dd>
- *   
+ *
  * </dl>
- * 
+ *
  * <h3>Authentication</h3>
  * <p>
- * For databases requiring authentication, the <code>password</code> can 
- * optionally be encrypted using {@link EncryptionUtil} 
+ * For databases requiring authentication, the <code>password</code> can
+ * optionally be encrypted using {@link EncryptionUtil}
  * (or command-line "encrypt.bat" or "encrypt.sh").
  * In order for the password to be decrypted properly, you need
  * to specify the encryption key used to encrypt it. The key can be stored
@@ -145,7 +145,7 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  *     <td>Name of a JVM system property containing the key.</td>
  *   </tr>
  * </table>
- * 
+ *
  * <h3>XML configuration usage:</h3>
  * <pre>
  *  &lt;committer class="com.norconex.committer.sql.SQLCommitter"&gt;
@@ -159,7 +159,7 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  *      &lt;tableName&gt;
  *        (The target database table name where documents will be committed.)
  *      &lt;/tableName&gt;
- *  
+ *
  *      &lt;!-- Other settings --&gt;
  *      &lt;driverPath&gt;
  *        (Path to JDBC driver. Not required if already in classpath.)
@@ -168,10 +168,10 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  *          &lt;property key="(property name)"&gt;(Property value.)&lt;/property&gt;
  *          &lt;!-- You can have multiple property. --&gt;
  *      &lt;/properties&gt;
- *      
+ *
  *      &lt;createTableSQL&gt;
- *          &lt;!-- 
- *            The CREATE statement used to create a table if it does not 
+ *          &lt;!--
+ *            The CREATE statement used to create a table if it does not
  *            already exist. If you need fields of specific types,
  *            specify them here.  The following variables are expected
  *            and will be replaced with the configuration options of the same name:
@@ -179,17 +179,17 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  *            Example:
  *            --&gt;
  *          CREATE TABLE ${tableName} (
- *              ${targetReferenceField} VARCHAR(32672) NOT NULL, 
- *              ${targetContentField}  CLOB, 
+ *              ${targetReferenceField} VARCHAR(32672) NOT NULL,
+ *              ${targetContentField}  CLOB,
  *              PRIMARY KEY ( ${targetReferenceField} ),
  *              title VARCHAR(256)
  *          )
  *      &lt;/createTableSQL&gt;
  *      &lt;createFieldSQL&gt;
- *          &lt;!-- 
- *            The ALTER statement used to create missing table fields.  
- *            The ${tableName} variable and will be replaced with 
- *            the configuration option of the same name. The ${fieldName} 
+ *          &lt;!--
+ *            The ALTER statement used to create missing table fields.
+ *            The ${tableName} variable and will be replaced with
+ *            the configuration option of the same name. The ${fieldName}
  *            variable will be replaced by newly encountered field names.
  *            Example:
  *            --&gt;
@@ -209,35 +209,35 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  *          (Attempts to prevent insertion errors by truncating values
  *           that are larger than their defined maximum field length.)
  *      &lt;/fixFieldValues&gt;
- *            
+ *
  *      &lt;!-- Use the following if authentication is required. --&gt;
  *      &lt;username&gt;(Optional user name)&lt;/username&gt;
  *      &lt;password&gt;(Optional user password)&lt;/password&gt;
  *      &lt;!-- Use the following if password is encrypted. --&gt;
  *      &lt;passwordKey&gt;(the encryption key or a reference to it)&lt;/passwordKey&gt;
  *      &lt;passwordKeySource&gt;[key|file|environment|property]&lt;/passwordKeySource&gt;
- *      
+ *
  *      &lt;sourceReferenceField keep="[false|true]"&gt;
- *         (Optional name of field that contains the document reference, when 
- *          the default document reference is not used.  
- *          Once re-mapped, this metadata source field is 
+ *         (Optional name of field that contains the document reference, when
+ *          the default document reference is not used.
+ *          Once re-mapped, this metadata source field is
  *          deleted, unless "keep" is set to <code>true</code>.)
  *      &lt;/sourceReferenceField&gt;
  *      &lt;targetReferenceField&gt;
- *         (Name of the database target field where the store a document unique 
- *          identifier (sourceReferenceField).  If not specified, 
- *          default is "id". Typically is a tableName primary key.) 
+ *         (Name of the database target field where the store a document unique
+ *          identifier (sourceReferenceField).  If not specified,
+ *          default is "id". Typically is a tableName primary key.)
  *      &lt;/targetReferenceField&gt;
  *      &lt;sourceContentField keep="[false|true]"&gt;
- *         (If you wish to use a metadata field to act as the document 
- *          "content", you can specify that field here.  Default 
+ *         (If you wish to use a metadata field to act as the document
+ *          "content", you can specify that field here.  Default
  *          does not take a metadata field but rather the document content.
  *          Once re-mapped, the metadata source field is deleted,
  *          unless "keep" is set to <code>true</code>.)
  *      &lt;/sourceContentField&gt;
  *      &lt;targetContentField&gt;
  *         (Target repository field name for a document content/body.
- *          Default is "content". Since document content can sometimes be 
+ *          Default is "content". Since document content can sometimes be
  *          quite large, a CLOB field is usually best advised.)
  *      &lt;/targetContentField&gt;
  *      &lt;commitBatchSize&gt;
@@ -251,16 +251,16 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  * </pre>
  * <p>
  * XML configuration entries expecting millisecond durations
- * can be provided in human-readable format (English only), as per 
+ * can be provided in human-readable format (English only), as per
  * {@link DurationParser} (e.g., "5 minutes and 30 seconds" or "5m30s").
  * </p>
- * 
+ *
  * <h4>Usage example:</h4>
  * <p>
- * The following example uses an H2 database and creates the table and fields 
+ * The following example uses an H2 database and creates the table and fields
  * as they are encountered, storing all new fields as VARCHAR, making sure
- * those new fields are no longer than 5000 characters. 
- * </p> 
+ * those new fields are no longer than 5000 characters.
+ * </p>
  * <pre>
  *  &lt;committer class="com.norconex.committer.sql.SQLCommitter"&gt;
  *      &lt;driverPath&gt;/path/to/driver/h2.jar&lt;/driverPath&gt;
@@ -269,8 +269,8 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  *      &lt;tableName&gt;test_table&lt;/tableName&gt;
  *      &lt;createTableSQL&gt;
  *          CREATE TABLE ${tableName} (
- *              ${targetReferenceField} VARCHAR(32672) NOT NULL, 
- *              ${targetContentField}  CLOB, 
+ *              ${targetReferenceField} VARCHAR(32672) NOT NULL,
+ *              ${targetContentField}  CLOB,
  *              PRIMARY KEY ( ${targetReferenceField} )
  *          )
  *      &lt;/createTableSQL&gt;
@@ -280,7 +280,7 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  *      &lt;fixFieldValues&gt;true&lt;/fixFieldValues&gt;
  *  &lt;/committer&gt;
  * </pre>
- *  
+ *
  * @author Pascal Essiembre
  */
 public class SQLCommitter extends AbstractMappedCommitter {
@@ -295,9 +295,10 @@ public class SQLCommitter extends AbstractMappedCommitter {
     public static final String DEFAULT_MULTI_VALUES_JOINER = "|";
 
     private static final String[] NO_REFLECT_FIELDS = new String[] {
-            "existingFields", "tableVerified", "datasource"
-    }; 
-    
+            "existingFields", "tableVerified", "datasource",
+            "password", "passwordKey"
+    };
+
     private String driverPath;
     private String driverClass;
     private String connectionUrl;
@@ -309,19 +310,19 @@ public class SQLCommitter extends AbstractMappedCommitter {
     private String tableName;
     private String createTableSQL;
     private String createFieldSQL;
-    
+
     private boolean fixFieldNames;
     private boolean fixFieldValues;
     private String multiValuesJoiner = DEFAULT_MULTI_VALUES_JOINER;
-    
+
     // When we create missing ones... so we do not check if exists each time.
     // key = field name; value = field size
     private final Map<String, Integer> existingFields = new HashMap<>();
     // If we could confirm whether the tableName exists
     private boolean tableVerified;
     private BasicDataSource datasource;
-    
-    
+
+
     /**
      * Constructor.
      */
@@ -390,7 +391,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
     public void setCreateTableSQL(String createTableSQL) {
         this.createTableSQL = createTableSQL;
     }
-    
+
     public String getCreateFieldSQL() {
         return createFieldSQL;
     }
@@ -428,7 +429,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
     //TODO The following is a workaround to not having
     // a close() method (or equivalent) on the Committers yet.
     // So we check that the caller is not itself, which means it should
-    // be the parent framework, which should in theory, call this only 
+    // be the parent framework, which should in theory, call this only
     // once. This is safe to do as the worst case scenario is that a new
     // client is re-created.
     // Remove this method once proper init/close is added to Committers
@@ -452,10 +453,10 @@ public class SQLCommitter extends AbstractMappedCommitter {
             }
         }
     }
-    
+
     @Override
     protected void commitBatch(List<ICommitOperation> batch) {
-        LOG.info("Sending " + batch.size() 
+        LOG.info("Sending " + batch.size()
                 + " commit operations to SQL database.");
         try {
             QueryRunner q = new QueryRunner(nullSafeDataSource());
@@ -464,7 +465,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
                 if (op instanceof IAddOperation) {
                     addOperation((IAddOperation) op, q);
                 } else if (op instanceof IDeleteOperation) {
-                    deleteOperation((IDeleteOperation) op, q); 
+                    deleteOperation((IDeleteOperation) op, q);
                 } else {
                     close();
                     throw new CommitterException("Unsupported operation:" + op);
@@ -487,7 +488,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
         if (StringUtils.isBlank(docId)) {
             docId = add.getReference();
         }
-        
+
         List<String> fields = new ArrayList<>();
         List<String> values = new ArrayList<>();
         for (Entry<String, List<String>> entry : add.getMetadata().entrySet()) {
@@ -513,7 +514,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
         runDelete(q, del.getReference());
     }
 
-    private void sqlInsertDoc(QueryRunner q, String sql, String docId, 
+    private void sqlInsertDoc(QueryRunner q, String sql, String docId,
             List<String> fields, List<String> values) throws SQLException {
         ensureFields(q, fields);
         Object[] args = new Object[values.size()];
@@ -542,7 +543,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
         }
         return newName;
     }
-    
+
     private String fixFieldValue(String fieldName, String value) {
         if (!fixFieldValues) {
             return value;
@@ -558,7 +559,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
         }
         return newValue;
     }
-    
+
     //--- Verifying/creating tables/fields -------------------------------------
 
     private boolean tableExists(QueryRunner q) {
@@ -581,8 +582,8 @@ public class SQLCommitter extends AbstractMappedCommitter {
             sql += " WHERE " + where;
         }
         LOG.debug(sql);
-        Integer val = (Integer) q.query(sql, new ScalarHandler<>(), values);
-        return val != null && val == 1;
+        Number val = (Number) q.query(sql, new ScalarHandler<>(), values);
+        return val != null && val.longValue() == 1;
     }
     private void runDelete(QueryRunner q, String docId) throws SQLException {
         String deleteSQL = "DELETE FROM " + tableName
@@ -590,7 +591,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
         LOG.trace(deleteSQL);
         q.update(deleteSQL, docId);
     }
-    
+
     private synchronized void ensureTable(QueryRunner q) throws SQLException {
         // if table was verified or no CREATE statement specified,
         // return right away.
@@ -608,9 +609,9 @@ public class SQLCommitter extends AbstractMappedCommitter {
         } else {
             LOG.info("Table \"" + tableName + "\" exists.");
         }
-        
+
         loadFieldsMetadata(q);
-        
+
         tableVerified = true;
     }
 
@@ -631,13 +632,13 @@ public class SQLCommitter extends AbstractMappedCommitter {
                 hasNew = true;
             }
         }
-        
+
         // Update fields metadata
         if (hasNew) {
             loadFieldsMetadata(q);
         }
     }
-    
+
     private void createField(QueryRunner q, String field) throws SQLException {
         try {
             String sql = interpolate(getCreateFieldSQL(), field);
@@ -665,7 +666,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
             }
         });
     }
-    
+
     private String interpolate(String text, String fieldName) {
         Map<String, String> vars = new HashMap<>();
         vars.put("tableName", getTableName());
@@ -676,7 +677,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
         }
         return StrSubstitutor.replace(text, vars);
     }
-    
+
     private synchronized BasicDataSource nullSafeDataSource() {
         if (datasource == null) {
             if (StringUtils.isBlank(getDriverClass())) {
@@ -693,7 +694,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
             if (StringUtils.isNotBlank(driverPath)) {
                 try {
                     ds.setDriverClassLoader(new URLClassLoader(
-                            new URL[] { new File(driverPath).toURI().toURL() }, 
+                            new URL[] { new File(driverPath).toURI().toURL() },
                             getClass().getClassLoader()));
                 } catch (MalformedURLException e) {
                     throw new CommitterException(
@@ -712,7 +713,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
             datasource = ds;
         }
         return datasource;
-    }    
+    }
 
     @Override
     protected void saveToXML(XMLStreamWriter writer) throws XMLStreamException {
@@ -739,7 +740,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
         w.writeElementBoolean("fixFieldNames", isFixFieldNames());
         w.writeElementBoolean("fixFieldValues", isFixFieldValues());
         w.writeElementString("multiValuesJoiner", getMultiValuesJoiner());
-        
+
         // Encrypted password:
         EncryptionKey key = getPasswordKey();
         if (key != null) {
@@ -758,7 +759,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
         setConnectionUrl(xml.getString("connectionUrl", getConnectionUrl()));
         setUsername(xml.getString("username", getUsername()));
         setPassword(xml.getString("password", getPassword()));
-        List<HierarchicalConfiguration> xmlProps = 
+        List<HierarchicalConfiguration> xmlProps =
                 xml.configurationsAt("properties.property");
         if (!xmlProps.isEmpty()) {
             properties.clear();
@@ -774,7 +775,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
         setFixFieldValues(xml.getBoolean("fixFieldValues", isFixFieldValues()));
         setMultiValuesJoiner(xml.getString(
                 "multiValuesJoiner", getMultiValuesJoiner()));
-        
+
         // encrypted password:
         String xmlKey = xml.getString("passwordKey", null);
         String xmlSource = xml.getString("passwordKeySource", null);
@@ -786,7 +787,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
             setPasswordKey(new EncryptionKey(xmlKey, source));
         }
     }
-    
+
     @Override
     public boolean equals(final Object other) {
         return EqualsBuilder.reflectionEquals(this, other, NO_REFLECT_FIELDS);
@@ -797,7 +798,7 @@ public class SQLCommitter extends AbstractMappedCommitter {
     }
     @Override
     public String toString() {
-        return new ReflectionToStringBuilder(this, 
+        return new ReflectionToStringBuilder(this,
                 ToStringStyle.SHORT_PREFIX_STYLE).setExcludeFieldNames(
                         NO_REFLECT_FIELDS).toString();
     }
