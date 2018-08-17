@@ -7,7 +7,7 @@
   </properties>
   <body>
 
-    <release version="2.0.0-SNAPSHOT" date="2018-??-??" description="Feature release">
+    <release version="2.0.0" date="2018-08-16" description="Major release">
       <action dev="essiembre" type="add">
         Can now control dynamic database field creation for new document 
         fields.  
@@ -25,7 +25,7 @@
         as new "createFieldSQL" configuration options.
       </action>
       <action dev="essiembre" type="update">
-        Dependency updates: Norconex Commons Lang 1.14.0, 
+        Dependency updates: Norconex Commons Lang 1.15.0, 
         Norconex Committer Core 2.1.2.
       </action>
       <action dev="essiembre" type="remove">
