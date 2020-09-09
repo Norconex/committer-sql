@@ -3,4 +3,4 @@ SQL Committer
 
 SQL/JDBC databasee implementation of Norconex Committer.
 
-Website: http://www.norconex.com/collectors/committer-sql/
+Website: https://opensource.norconex.com/committers/sql/
