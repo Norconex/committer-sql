@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- 
-   Copyright 2017-2018 Norconex Inc.
+   Copyright 2017-2020 Norconex Inc.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -23,17 +23,17 @@
       <xs:complexContent> 
         <xs:extension base="AbstractMappedCommitter">
           <xs:all>
-            <xs:element name="driverClass" type="nonEmptyString" minOccurs="1" maxOccurs="1" />
-            <xs:element name="connectionUrl" type="nonEmptyString" minOccurs="1" maxOccurs="1" />
-            <xs:element name="tableName" type="nonEmptyString" minOccurs="1" maxOccurs="1" />
-            <xs:element name="driverPath" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
+            <xs:element name="driverClass" type="xs:string" minOccurs="1" maxOccurs="1" />
+            <xs:element name="connectionUrl" type="xs:string" minOccurs="1" maxOccurs="1" />
+            <xs:element name="tableName" type="xs:string" minOccurs="1" maxOccurs="1" />
+            <xs:element name="driverPath" type="xs:string" minOccurs="0" maxOccurs="1" />
             <xs:element ref="properties" minOccurs="0" maxOccurs="1" />
-            <xs:element name="createTableSQL" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
-            <xs:element name="createFieldSQL" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
+            <xs:element name="createTableSQL" type="xs:string" minOccurs="0" maxOccurs="1" />
+            <xs:element name="createFieldSQL" type="xs:string" minOccurs="0" maxOccurs="1" />
             <xs:element name="multiValuesJoiner" type="xs:string" minOccurs="0" maxOccurs="1" />
-            <xs:element name="username" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
-            <xs:element name="password" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
-            <xs:element name="passwordKey" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
+            <xs:element name="username" type="xs:string" minOccurs="0" maxOccurs="1" />
+            <xs:element name="password" type="xs:string" minOccurs="0" maxOccurs="1" />
+            <xs:element name="passwordKey" type="xs:string" minOccurs="0" maxOccurs="1" />
             <xs:element name="passwordKeySource" minOccurs="0" maxOccurs="1">
               <xs:simpleType>
                 <xs:restriction base="xs:string">
