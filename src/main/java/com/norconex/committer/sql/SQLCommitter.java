@@ -47,7 +47,8 @@ import com.norconex.commons.lang.xml.XML;
  * <p>
  * Alternatively, you can provide the necessary SQLs to create a new
  * table as well as new fields as needed using
- * {@link #setCreateTableSQL(String)} and {@link #setCreateFieldSQL(String)}
+ * {@link SQLCommitterConfig#setCreateTableSQL(String)} and
+ * {@link SQLCommitterConfig#setCreateFieldSQL(String)}
  * respectively. Make sure to use the following placeholder variables
  * as needed in the provided SQL(s) table and field creation, respectively:
  * </p>
@@ -57,12 +58,12 @@ import com.norconex.commons.lang.xml.XML;
  *   <dt>{tableName}</dt>
  *   <dd>
  *     Your table name, to be replaced with the value supplied with
- *     {@link #setTableName(String)}.
+ *     {@link SQLCommitterConfig#setTableName(String)}.
  *   </dd>
  *   <dt>{primaryKey}</dt>
  *   <dd>
  *     Your table primary key field name, to be replaced with the value
- *     supplied with {@link #setPrimaryKey(String)}.
+ *     supplied with {@link SQLCommitterConfig#setPrimaryKey(String)}.
  *   </dd>
  * </dl>
  * <h4>Field creation</h4>
@@ -188,7 +189,8 @@ import com.norconex.commons.lang.xml.XML;
  *     ALTER TABLE {tableName} ADD {fieldName} VARCHAR(5000)
  *   </createFieldSQL>
  *   <fixFieldValues>true</fixFieldValues>
- *  </committer>
+ * </committer>
+ * }
  * <p>
  * The above example uses an H2 database and creates the table and fields
  * as they are encountered, storing all new fields as VARCHAR, making sure
