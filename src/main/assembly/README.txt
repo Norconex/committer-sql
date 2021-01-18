@@ -1,5 +1,5 @@
 Norconex SQL Committer
-Copyright 2017-2020 Norconex Inc.
+Copyright 2017-2021 Norconex Inc.
 
 General Information:
 ====================
