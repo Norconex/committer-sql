@@ -149,7 +149,7 @@
   <distributionManagement>
     <site>
       <id>norconex-site-deployment</id>
-      <url>${site.baseurl}/collectors/committer-sql/latest</url>
+      <url>${site.baseurl}/committers/sql/v3</url>
     </site>
   </distributionManagement>
 
