@@ -199,6 +199,7 @@ import com.norconex.commons.lang.xml.XML;
  *
  * @author Pascal Essiembre
  */
+@SuppressWarnings("javadoc")
 public class SQLCommitter extends AbstractBatchCommitter {
 
     private final SQLCommitterConfig config;
