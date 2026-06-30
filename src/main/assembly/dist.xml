@@ -48,7 +48,7 @@
     </fileSet>
     <fileSet>
       <directory>${project.build.directory}/shared-resources</directory>
-      <outputDirectory>/</outputDirectory>
+      <outputDirectory>./</outputDirectory>
     </fileSet>
     <fileSet>
       <directory>${project.build.directory}/generated-sources/license</directory>
@@ -61,10 +61,6 @@
 
   <dependencySets>
     <dependencySet>
-      <excludes>
-        <exclude>junit*</exclude>
-        <exclude>hamcrest-core*</exclude>
-      </excludes>
       <outputDirectory>lib</outputDirectory>
       <outputFileNameMapping>${artifact.artifactId}-${artifact.baseVersion}.${artifact.extension}</outputFileNameMapping>      
     </dependencySet>
