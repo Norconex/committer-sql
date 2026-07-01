@@ -37,7 +37,7 @@ import com.norconex.commons.lang.xml.XML;
  * are mapped to table columns.
  * </p>
  *
- * <h3>Handling of missing table/fields</h3>
+ * <h2>Handling of missing table/fields</h2>
  * <p>
  * By default, this Committer will throw an exception when trying to insert
  * values into non-existing database table or fields. It is recommended you
@@ -53,7 +53,7 @@ import com.norconex.commons.lang.xml.XML;
  * as needed in the provided SQL(s) table and field creation, respectively:
  * </p>
  *
- * <h4>Table creation</h4>
+ * <h3>Table creation</h3>
  * <dl>
  *   <dt>{tableName}</dt>
  *   <dd>
@@ -66,7 +66,7 @@ import com.norconex.commons.lang.xml.XML;
  *     supplied with {@link SQLCommitterConfig#setPrimaryKey(String)}.
  *   </dd>
  * </dl>
- * <h4>Field creation</h4>
+ * <h3>Field creation</h3>
  * <dl>
  *   <dt>{fieldName}</dt>
  *   <dd>
@@ -209,9 +209,14 @@ public class SQLCommitter extends AbstractBatchCommitter {
     @EqualsExclude
     private SQLClient client;
 
+    /** Creates a new SQL committer with default configuration. */
     public SQLCommitter() {
         this(new SQLCommitterConfig());
     }
+    /**
+     * Creates a new SQL committer with the given configuration.
+     * @param config committer configuration
+     */
     public SQLCommitter(SQLCommitterConfig config) {
         this.config = Objects.requireNonNull(
                 config, "'config' must not be null.");
@@ -236,6 +241,10 @@ public class SQLCommitter extends AbstractBatchCommitter {
         client = null;
     }
 
+    /**
+     * Gets this committer's configuration.
+     * @return committer configuration
+     */
     public SQLCommitterConfig getConfig() {
         return config;
     }
